@@ -1,0 +1,36 @@
+/* LogoutDialog.css */
+
+/* Style the dialog title */
+.dialog-title {
+  background-color: #1976d2; /* Use your preferred background color */
+  color: white; /* Text color */
+}
+
+/* Style the dialog content */
+.dialog-content {
+  padding: 16px; /* Adjust padding as needed */
+}
+
+/* Style the cancel button */
+.cancel-button {
+  color: #f50057; /* Cancel button text color */
+}
+
+/* Style the logout button */
+.logout-button {
+  background-color: #f50057; /* Logout button background color */
+  color: white; /* Text color */
+}
+
+.clickable-avatar {
+  border-radius: 200px 200px 200px 200px;
+  display: inline-block;
+  cursor: pointer;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.clickable-avatar:hover {
+  border-radius: 200px 200px 200px 200px;
+  transform: translateY(-5px);
+  box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.4);
+}

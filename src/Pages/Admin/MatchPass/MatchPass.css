@@ -1,0 +1,16 @@
+.background {
+  background-image: url("../../../public/images/FundacionTuvanosa.jpg");
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-size: cover;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.paperStyle {
+  width: 400px; /* Ajusta esto según tus necesidades */
+}
