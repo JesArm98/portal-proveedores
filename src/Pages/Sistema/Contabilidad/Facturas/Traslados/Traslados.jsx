@@ -16,6 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { fieldsTraslados } from "@/Constants/Fields/fields";
 import ColumnGenerator from "@/Components/Custom/ColumnGenerator";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { useNavigate } from "react-router-dom";
 
 const URL = import.meta.env.VITE_API_URL;
 
@@ -34,6 +35,8 @@ function Traslados() {
     faltantesData: null,
     errorData: null,
   });
+
+  const navigate = useNavigate();
 
   // 🔹 Estado de UI (booleanos)
   const [uiState, setUiState] = useState({
@@ -72,7 +75,21 @@ function Traslados() {
 
       setFileState((prev) => ({ ...prev, data: respuesta.data }));
     } catch (error) {
-      console.error("Error al obtener los datos:", error);
+      if (error.response) {
+        // Si el error tiene respuesta del servidor, revisamos el código de estado
+        if (error.response.status === 401) {
+          showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+          localStorage.clear(); // Limpiar el almacenamiento local
+          navigate("/sign-in"); // Redirigir al login
+        }
+      } else if (error.message === "Network Error") {
+        showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+        localStorage.clear(); // Limpiar el almacenamiento local
+        navigate("/sign-in"); // Redirigir al login
+      } else {
+        console.error("Error al obtener los datos:", error);
+      }
+      showSnackbar(`${error.response.data}`, "error");
     } finally {
       setUiState((prev) => ({ ...prev, isLoading: false }));
     }
@@ -515,33 +532,6 @@ function Traslados() {
       const faltantes = response.data.Item2;
 
       const errores = response.data.Item1.filter((item) => !item.estatusSap);
-
-      // 🔹 Si solo hay errores y no hay datos válidos o faltantes, mostrar una alerta y no abrir el modal
-      // if (
-      //   errores.length > 0 &&
-      //   rechazados.length === 0 &&
-      //   validos.length === 0
-      // ) {
-      //   showSnackbar(
-      //     "❌ Todos los archivos contienen errores. Revisa e intenta de nuevo.",
-      //     "error"
-      //   );
-      //   return;
-      // }
-
-      // 🔹 Si solo hay faltantes y errores, pero no hay datos válidos ni rechazados, no abrir modal
-      // if (
-      //   !!faltantes &&
-      //   !!errores &&
-      //   validos.length === 0 &&
-      //   rechazados.length === 0
-      // ) {
-      //   showSnackbar(
-      //     "⚠️ Hay datos faltantes, pero no hay información válida para procesar.",
-      //     "warning"
-      //   );
-      //   return;
-      // }
 
       // 🔹 Si solo hay datos relacionados y no hay errores, faltantes ni rechazados, se envían automáticamente
       if (

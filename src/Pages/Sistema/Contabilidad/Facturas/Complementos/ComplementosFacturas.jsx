@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSnackbar } from "@/Context/SnackbarContext";
 import CustomTable from "@/Components/Custom/CustomTable";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import SourceIcon from "@mui/icons-material/Source";
@@ -61,7 +62,7 @@ function ComplementosFacturas() {
   const [validados, setValidados] = useState(false);
   const [conceptos, setConceptos] = useState();
   const [openDialog, setOpenDialog] = useState(false);
-
+  const navigate = useNavigate();
   const { getConfig } = useAuth();
 
   console.log(invalidos);
@@ -70,22 +71,34 @@ function ComplementosFacturas() {
     const obtenerDatos = async () => {
       try {
         const config = getConfig();
-
         const respuesta = await axios.get(
           `https://${URL}/WS/TuvanosaProveedores/Api/ComplementoPago/GetComplementosPagos?rol=5`,
           config
         );
-
         setAgencias(respuesta.data);
       } catch (error) {
-        console.error("Error al obtener los datos:", error);
+        if (error.response) {
+          // Si el error tiene respuesta del servidor, revisamos el código de estado
+          if (error.response.status === 401) {
+            showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+            localStorage.clear(); // Limpiar el almacenamiento local
+            navigate("/sign-in"); // Redirigir al login
+          }
+        } else if (error.message === "Network Error") {
+          showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+          localStorage.clear(); // Limpiar el almacenamiento local
+          navigate("/sign-in"); // Redirigir al login
+        } else {
+          console.error("Error al obtener los datos:", error);
+        }
+        showSnackbar(`${error.response.data}`, "error");
       } finally {
         setIsLoading(false);
       }
     };
 
     obtenerDatos();
-  }, [contador]);
+  }, [contador, navigate]);
 
   const handleOnCloseCrear = async () => {
     setOpenDialog(false);
@@ -186,8 +199,6 @@ function ComplementosFacturas() {
         );
       },
     },
-
-    // ESTATUS
     {
       accessorKey: "estatusSat",
       header: "ESTATUS SAT",
@@ -219,15 +230,12 @@ function ComplementosFacturas() {
         );
       },
     },
-
-    // UUID
     {
       accessorKey: "uuid",
       header: "UUID",
       ...tableCellPropsCenter,
       Cell: ({ cell }) => cell.getValue() ?? "", // Protección contra valores nulos
     },
-
     {
       accessorKey: "facturaDto.Fecha",
       header: "Fecha factura",
@@ -286,7 +294,6 @@ function ComplementosFacturas() {
       Cell: ({ cell }) => cell.getValue() ?? "", // Protección contra valores nulos
       ...tableCellPropsCenter,
     },
-
     {
       accessorKey: "facturaDto.TipoDeComprobante",
       header: "Tipo C",
@@ -297,7 +304,6 @@ function ComplementosFacturas() {
       },
       ...tableCellPropsCenter,
     },
-
     {
       accessorKey: "facturaDto.SubTotal",
       header: "SubTotal",
@@ -310,7 +316,6 @@ function ComplementosFacturas() {
       },
       ...tableCellPropsCenter,
     },
-
     {
       accessorKey: "facturaDto.Impuestos.TotalImpuestosTrasladados",
       header: "Impuestos traslados",
@@ -323,7 +328,6 @@ function ComplementosFacturas() {
       },
       ...tableCellPropsCenter,
     },
-
     {
       accessorKey: "facturaDto.Total",
       header: "Total",
@@ -336,7 +340,6 @@ function ComplementosFacturas() {
       },
       ...tableCellPropsCenter,
     },
-
     {
       accessorKey: "facturaDto.Moneda",
       header: "Moneda",

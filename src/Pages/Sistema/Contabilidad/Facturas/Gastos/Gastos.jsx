@@ -11,6 +11,7 @@ import { useAuth } from "@/Context/AuthContext";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import PreviewDialog from "@/Components/Custom/PreviewDialog";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { useNavigate } from "react-router-dom";
 
 const URL = import.meta.env.VITE_API_URL;
 
@@ -29,7 +30,7 @@ function Gastos() {
   const [pdfPreview, setPdfPreview] = useState(false);
   const [PDF, setPDF] = useState("");
   const [openPDF, setOpenPDF] = useState(false);
-
+  const navigate = useNavigate();
   const { getConfig } = useAuth();
 
   useEffect(() => {
@@ -44,7 +45,21 @@ function Gastos() {
 
         setAgencias(respuesta.data);
       } catch (error) {
-        console.error("Error al obtener los datos:", error);
+        if (error.response) {
+          // Si el error tiene respuesta del servidor, revisamos el código de estado
+          if (error.response.status === 401) {
+            showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+            localStorage.clear(); // Limpiar el almacenamiento local
+            navigate("/sign-in"); // Redirigir al login
+          }
+        } else if (error.message === "Network Error") {
+          showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+          localStorage.clear(); // Limpiar el almacenamiento local
+          navigate("/sign-in"); // Redirigir al login
+        } else {
+          console.error("Error al obtener los datos:", error);
+        }
+        showSnackbar(`${error.response.data}`, "error");
       } finally {
         setIsLoading(false);
       }

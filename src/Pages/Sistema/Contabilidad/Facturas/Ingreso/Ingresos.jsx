@@ -11,6 +11,9 @@ import { MenuItem, Select, FormControl, InputLabel } from "@mui/material";
 import { tableCellPropsCenter } from "@/Components/Custom/CustomBoxStyles";
 import ExportCsvButton from "@/Components/Custom/ExportCsvButton";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Box,
   Button,
@@ -30,10 +33,13 @@ import { useAuth } from "@/Context/AuthContext";
 import ConceptosIngresos from "./ConceptosIngresos";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import PreviewDialog from "@/Components/Custom/PreviewDialog";
-import TablaFacturaIngresos from "../Complementos/TablaCrearFacturaIngreso";
+import TablaFacturaIngresos from "./TablaCrearFacturaIngreso";
 import { InsertDriveFile } from "@mui/icons-material";
 import CustomDialog from "@/Components/Custom/CustomDialog";
 import DragAndDropArea from "./DragAndDropArea";
+import { useNavigate } from "react-router-dom";
+import DialogoCambiarOC from "./DialogoCambiarOC";
+import DialogoEliminarOC from "./DialogoEliminarOC";
 
 const csvConfig = mkConfig({
   fieldSeparator: ",",
@@ -56,6 +62,7 @@ function Ingresos() {
   const [isMobile] = useState(window.innerWidth <= 600);
   const [agencias, setAgencias] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [tituloModalCE, setTituloModalCE] = useState("");
   const [conceptosDialogOpen, setConceptosDialogOpen] = useState(false);
   const [PDF, setPDF] = useState("");
   const [openPDF, setOpenPDF] = useState(false);
@@ -63,12 +70,16 @@ function Ingresos() {
   const [loading, setLoading] = useState(false);
   const [validados, setValidados] = useState(false);
   const [conceptos, setConceptos] = useState();
+  const [openCambiarOC, setOpenCambiarOC] = useState(false);
+  const [openEliminarOC, setOpenEliminarOC] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [openRowId, setOpenRowId] = useState(null); // Estado global de apertura
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(0);
   const [empresas, setEmpresas] = useState([]); // Estado para almacenar empresas
-
+  const navigate = useNavigate();
   const { getConfig } = useAuth();
+  const [uuidOc, setUuidOc] = useState("");
+  const [subTotal, setSubTotal] = useState("");
 
   console.log(invalidos);
 
@@ -117,7 +128,21 @@ function Ingresos() {
 
         setAgencias(respuesta.data);
       } catch (error) {
-        console.error("Error al obtener los datos:", error);
+        if (error.response) {
+          // Si el error tiene respuesta del servidor, revisamos el código de estado
+          if (error.response.status === 401) {
+            showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+            localStorage.clear(); // Limpiar el almacenamiento local
+            navigate("/sign-in"); // Redirigir al login
+          }
+        } else if (error.message === "Network Error") {
+          showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+          localStorage.clear(); // Limpiar el almacenamiento local
+          navigate("/sign-in"); // Redirigir al login
+        } else {
+          console.error("Error al obtener los datos:", error);
+        }
+        showSnackbar(`${error.response.data}`, "error");
       } finally {
         setIsLoading(false);
       }
@@ -429,10 +454,52 @@ function Ingresos() {
     },
   ];
 
+  //   ELIMINA LA ORDEN DE COMPRA METODO
+  const handleEliminarOC = async () => {
+    try {
+      const config = getConfig();
+
+      // Realiza la solicitud GET para obtener la factura por UUID
+      const getResponse = await axios.get(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetFacturaByUUID?uuid=${uuidOc}`,
+        config
+      );
+
+      // Obtén los datos de la respuesta
+      const dataFromGet = getResponse.data;
+
+      // Verifica si hay datos y establece ordenCompra como 0
+      if (dataFromGet) {
+        dataFromGet.ordenCompra = 0;
+      }
+
+      // Envía la solicitud POST para actualizar la orden de compra
+      const EditarOC = await axios.post(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/EditarFacturaOrdenCompra`,
+        dataFromGet,
+        config
+      );
+
+      // Verifica el código de estado de la respuesta
+      if (EditarOC.status === 200) {
+        showSnackbar("Orden de compra eliminada con éxito", "success");
+        setOpenEliminarOC(false);
+        setContador(contador + 1);
+      } else {
+        setOpenCambiarOC(false);
+      }
+    } catch (error) {
+      console.error("Error en las solicitudes:", error);
+      showSnackbar("Hubo un error al eliminar la orden de compra", "error");
+    }
+  };
+
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
+
+    // Aseguramos que la validación sea insensible a mayúsculas
     const xmlFiles = files.filter((file) =>
-      file.name.endsWith(".xml" || ".XML")
+      file.name.toLowerCase().endsWith(".xml")
     );
 
     if (xmlFiles.length !== files.length) {
@@ -595,6 +662,41 @@ function Ingresos() {
         enableRowActions
         renderRowActions={({ row }) => {
           const actions = [
+            {
+              tooltipTitle:
+                row.original.ordenCompra === 0 ? "Añadir OC" : "Editar OC",
+              icon:
+                row.original.ordenCompra === 0 ? (
+                  <AddCircleOutlineIcon
+                    style={{ color: "green", width: 25, height: 25 }}
+                  />
+                ) : (
+                  <EditRoundedIcon
+                    style={{ color: "#ff9100", width: 25, height: 25 }}
+                  />
+                ),
+              onClick: () => {
+                setOpenCambiarOC(true);
+                setUuidOc(row.original.uuid);
+                setTituloModalCE(
+                  row.original.ordenCompra === 0
+                    ? "Añadir orden de compra"
+                    : "Editar orden de compra"
+                );
+                setSubTotal(row.original.subTotal);
+              },
+            },
+            {
+              tooltipTitle: "Eliminar OC",
+              icon: (
+                <CloseIcon style={{ color: "#f00", width: 25, height: 25 }} />
+              ),
+              onClick: () => {
+                setOpenEliminarOC(true);
+                setUuidOc(row.original.uuid);
+              },
+              condition: row.original.ordenCompra > 0,
+            },
             {
               tooltipTitle: "Conceptos",
               icon: (
@@ -862,6 +964,20 @@ function Ingresos() {
       >
         <ConceptosIngresos conceptos={conceptos} />
       </CustomDialog>
+      <DialogoCambiarOC
+        open={openCambiarOC}
+        setOpenCambiarOC={setOpenCambiarOC}
+        uuid={uuidOc}
+        setContador={setContador}
+        contador={contador}
+        tituloModalCE={tituloModalCE}
+        subTotal={subTotal}
+      ></DialogoCambiarOC>
+      <DialogoEliminarOC
+        open={openEliminarOC}
+        setOpenEliminarOC={setOpenEliminarOC}
+        handleEliminarOC={handleEliminarOC}
+      ></DialogoEliminarOC>
     </Box>
   );
 }

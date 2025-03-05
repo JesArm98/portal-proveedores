@@ -19,6 +19,7 @@ import { AccountCircle } from "@mui/icons-material";
 import KeyIcon from "@mui/icons-material/Key";
 import Backdrop from "@mui/material/Backdrop";
 import { Alert, CircularProgress, Link, Snackbar, Stack } from "@mui/material";
+import ProviderPortalMessage from "../../Sistema/Contabilidad/Facturas/ProviderPortalMessage";
 
 export default function SignInPage() {
   const [correo, setCorreo] = useState("");
@@ -33,6 +34,7 @@ export default function SignInPage() {
   const [errorModal, setErrorModal] = useState("");
   const [open, setOpen] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [openAviso, setOpenAviso] = useState(true);
   const [correoModal, setCorreoModal] = useState("");
   const [openSnack, setOpenSnack] = useState(false);
   const [openSnackError, setOpenSnackError] = useState(false);
@@ -341,21 +343,26 @@ export default function SignInPage() {
                       sx={{ color: "action.active", mr: 1, my: 4.3 }}
                     />
                     <TextField
-                      placeholder="email@tuvanosa.com"
+                      placeholder="email@dominio.com"
                       variant="standard"
                       InputLabelProps={{
                         shrink: true,
                       }}
-                      helperText="El correo debe contar con alguno de estos dominios: tuvanosa.com, hynsa.mx o quickpipes.mx."
                       margin="normal"
                       required
                       value={correo}
                       onChange={handleEmailChange}
                       fullWidth
                       id="email"
-                      label="Usuario"
+                      label="Correo"
                       name="email"
                       autoComplete="email"
+                      error={!isValidMail && correo.length > 0}
+                      helperText={
+                        !isValidMail && correo.length > 0
+                          ? "Por favor ingrese un correo electrónico válido"
+                          : "Para ingresar al portal se hace mediante el correo electrónico con que se registro el proveedor."
+                      }
                     />
                   </Box>
                   <Box
@@ -542,7 +549,7 @@ export default function SignInPage() {
                       >
                         {" "}
                         Tienes algun problema? Comunícate con:{"  "}
-                        <strong>soporteweb@tuvanosa.com</strong>{" "}
+                        <strong>innovacion@tuvanosa.com</strong>{" "}
                       </Typography>
                     </Grid>
                     <Backdrop
@@ -583,6 +590,12 @@ export default function SignInPage() {
                         fullWidth
                         value={correoModal}
                         onChange={handleEmailChange2}
+                        error={!isValidMail && correoModal.length > 0}
+                        helperText={
+                          !isValidMail && correoModal.length > 0
+                            ? "Por favor ingrese un correo electrónico válido"
+                            : ""
+                        }
                       />
                     </form>
                   </CustomDialog>
@@ -618,6 +631,16 @@ export default function SignInPage() {
 
               <Copyright sx={{ mt: 8, mb: 4 }} />
             </Container>
+
+            <CustomDialog
+              open={openAviso}
+              onClose={() => setOpenAviso(false)}
+              title="Aviso importante portal Proveedores Tuvanosa"
+              onPdfPreview={true}
+              width="md"
+            >
+              <ProviderPortalMessage />
+            </CustomDialog>
 
             {/* 🔹 Formulario de Registro */}
             <Container
