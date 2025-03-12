@@ -933,6 +933,11 @@ export const fieldsListaEmpleados = [
     accessorKey: "puesto",
     header: "PUESTO",
   },
+  {
+    enableEditing: false,
+    accessorKey: "departamento",
+    header: "DEPARTAMENTO",
+  },
   // Teléfono
   {
     accessorKey: "telefono",
@@ -1022,6 +1027,7 @@ export const fieldsOrdenesCompras = [
   {
     accessorKey: "monto",
     header: "MONTO",
+    type: "currency",
   },
   {
     accessorKey: "abrevia",
@@ -1251,9 +1257,9 @@ export const fieldsPagarePago = [
     header: "MONEDA",
   },
   {
-    accessorKey: "estatus",
+    accessorKey: "interes",
     header: "INTERES",
-    type: "percernt",
+    type: "percent",
   },
   {
     accessorKey: "fechaPagare",
@@ -1413,6 +1419,16 @@ export const fieldsTraslados = [
       false: "NO INCLUIDA",
     },
   },
+  {
+    accessorKey: "trasladosCargados",
+    header: "TRASLADOS",
+    type: "status",
+    width: "fit-content",
+    valueMap: {
+      true: "CARGADOS",
+      false: "NO CARGADOS",
+    },
+  },
   // ID
   {
     accessorKey: "id",
@@ -1425,6 +1441,137 @@ export const fieldsTraslados = [
   {
     accessorKey: "uuid",
     header: "UUID",
+  },
+  {
+    accessorKey: "claveSapProv",
+    header: "CVE SAP PROV",
+  },
+  {
+    accessorKey: "facturaDto.Emisor.Rfc",
+    header: "RFC Emisor",
+  },
+  {
+    accessorKey: "facturaDto.Emisor.Nombre",
+    header: "Nombre Emisor",
+  },
+  {
+    accessorKey: "facturaDto.Emisor.RegimenFiscal",
+    header: "Regimen Emisor",
+  },
+  {
+    accessorKey: "facturaDto.Receptor.Rfc",
+    header: "RFC Receptor",
+  },
+  {
+    accessorKey: "facturaDto.Receptor.Nombre",
+    header: "Nombre Receptor",
+  },
+  {
+    accessorKey: "facturaDto.Receptor.UsoCFDI",
+    header: "Uso CFDI",
+  },
+  {
+    accessorKey: "facturaDto.TipoDeComprobante",
+    header: "Tipo C",
+    valueMap: {
+      I: "Ingreso",
+      E: "Egreso",
+      P: "Complemento pago",
+      T: " Traslado",
+    },
+  },
+  {
+    accessorKey: "facturaDto.Fecha",
+    header: "Fecha factura",
+    type: "date",
+  },
+  {
+    accessorKey: "fechaModificacion",
+    header: "Fecha carga",
+    type: "date",
+  },
+  {
+    accessorKey: "facturaDto.Folio",
+    header: "Folio",
+  },
+  {
+    accessorKey: "facturaDto.SubTotal",
+    header: "SubTotal",
+    type: "currency",
+  },
+  {
+    id: "TasaOCuota",
+    header: "Tasa o Cuota",
+    accessorFn: (row) => {
+      const traslados = row?.facturaDto?.Impuestos?.Traslados;
+      if (traslados && traslados.length > 0) {
+        return `${traslados[0].TasaOCuota}%`;
+      }
+      return "";
+    },
+  },
+  {
+    accessorKey: "facturaDto.Impuestos.TotalImpuestosTrasladados",
+    header: "Impuestos traslados",
+    type: "currency",
+  },
+  {
+    accessorKey: "facturaDto.Impuestos.TotalImpuestosRetenidos",
+    header: "Impuestos retenidos",
+    type: "currency",
+  },
+  {
+    accessorKey: "facturaDto.Total",
+    header: "Total",
+    type: "currency",
+  },
+  {
+    accessorKey: "facturaDto.Moneda",
+    header: "Moneda",
+  },
+  {
+    accessorKey: "facturaDto.MetodoPago",
+    header: "Metodo de pago",
+  },
+  {
+    accessorKey: "facturaDto.FormaPago",
+    header: "Forma de pago",
+  },
+  {
+    accessorKey: "facturaDto.Version",
+    header: "Versión",
+  },
+];
+
+export const fieldsTrasladosRelacionados = [
+  {
+    accessorKey: "descrEstatusSap",
+    header: "ESTATUS",
+    type: "status",
+    width: "fit-content",
+  },
+  {
+    accessorKey: "estatusSat",
+    header: "ESTATUS SAT",
+    type: "status",
+    width: "fit-content",
+    valueMap: {
+      true: "VIGENTE",
+      false: "CANCELADA",
+    },
+  },
+  // ID
+  {
+    accessorKey: "id",
+    header: "ID",
+  },
+  {
+    accessorKey: "uuid",
+    header: "UUID",
+  },
+  {
+    accessorKey: "claveSapProv",
+    header: "CVE SAP PROV",
   },
   {
     accessorKey: "facturaDto.Emisor.Rfc",
@@ -1548,6 +1695,10 @@ export const fieldsTrasladosSecundaria = [
   {
     accessorKey: "uuid",
     header: "UUID",
+  },
+  {
+    accessorKey: "claveSapProv",
+    header: "CVE SAP PROV",
   },
   {
     accessorKey: "facturaDto.Emisor.Rfc",

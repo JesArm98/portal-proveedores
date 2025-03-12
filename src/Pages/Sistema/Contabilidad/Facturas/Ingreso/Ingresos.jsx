@@ -37,7 +37,7 @@ import TablaFacturaIngresos from "./TablaCrearFacturaIngreso";
 import { InsertDriveFile } from "@mui/icons-material";
 import CustomDialog from "@/Components/Custom/CustomDialog";
 import DragAndDropArea from "./DragAndDropArea";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import DialogoCambiarOC from "./DialogoCambiarOC";
 import DialogoEliminarOC from "./DialogoEliminarOC";
 
@@ -80,10 +80,13 @@ function Ingresos() {
   const { getConfig } = useAuth();
   const [uuidOc, setUuidOc] = useState("");
   const [subTotal, setSubTotal] = useState("");
+  const [aviso, setAviso] = useState(true);
 
   console.log(invalidos);
 
   const URL = import.meta.env.VITE_API_URL;
+
+  const location = useLocation(); // Obtenemos el objeto location
 
   useEffect(() => {
     const obtenerDatosDeJefes = async () => {
@@ -277,8 +280,8 @@ function Ingresos() {
             {status === true
               ? "VIGENTE"
               : status === false
-              ? "CANCELADA"
-              : "ERROR"}
+                ? "CANCELADA"
+                : "ERROR"}
           </Box>
         );
       },
@@ -318,6 +321,11 @@ function Ingresos() {
         const value = cell.getValue();
         return value > 0 ? value : "";
       },
+    },
+    {
+      accessorKey: "claveSapProv",
+      header: "CVE SAP PROV",
+      ...tableCellPropsCenter,
     },
 
     {
@@ -536,6 +544,8 @@ function Ingresos() {
       reader.onerror = (error) => reject(error);
     });
   };
+
+  console.log(sucursalSeleccionada);
 
   const handleValidar = async () => {
     const config = getConfig();
@@ -908,6 +918,7 @@ function Ingresos() {
               total={total}
               setTotal={setTotal}
               setVerificacionDataConOC={setVerificacionDataConOC}
+              location={location}
             />
           </Box>
         )}
@@ -978,6 +989,26 @@ function Ingresos() {
         setOpenEliminarOC={setOpenEliminarOC}
         handleEliminarOC={handleEliminarOC}
       ></DialogoEliminarOC>
+      <CustomDialog
+        title={"AVISO"}
+        transitionTimeout={400}
+        open={aviso}
+        onPdfPreview={true}
+        paddingContent={0}
+        onClose={() => setAviso(false)}
+        width="md"
+        fullWidth
+      >
+        <ul>
+          <li>
+            Se ha solucionado el error de de calculo de la Orden de Compra
+          </li>
+          <li>
+            Se ha agregado una nueva columna en la tabla que es CVE SAP PROV,
+            que como su nombre lo dice es la CLAVE SAP del PROVEEDOR
+          </li>
+        </ul>
+      </CustomDialog>
     </Box>
   );
 }

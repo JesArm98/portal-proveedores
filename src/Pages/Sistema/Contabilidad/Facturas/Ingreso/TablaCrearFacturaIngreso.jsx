@@ -32,6 +32,7 @@ function TablaFacturaIngresos({
   total,
   setTotal,
   setVerificacionDataConOC,
+  location,
 }) {
   const { getConfig } = useAuth();
   const [data, setData] = useState(agencias);
@@ -67,7 +68,7 @@ function TablaFacturaIngresos({
       return selectedRowIds.includes(rowId);
     });
     const newTotal = selectedRows.reduce((acc, row) => {
-      const totalValue = parseFloat(row.facturaDto?.Total) || 0;
+      const totalValue = parseFloat(row.subTotal) || 0;
       return acc + totalValue;
     }, 0);
     setTotal(newTotal);
@@ -146,15 +147,26 @@ function TablaFacturaIngresos({
     {
       accessorFn: (row) => {
         try {
-          // Verifica si `row`, `facturaDto`, `Impuestos` y `Traslados` existen
-          const traslados = row?.facturaDto?.Impuestos?.Traslados;
-          // Si `traslados` existe y tiene elementos, devuelve `TasaOCuota`; si no, devuelve una cadena vacía
-          return traslados?.length > 0 && traslados[0]?.TasaOCuota
-            ? traslados[0].TasaOCuota
-            : "";
+          // Verificar si facturaDto e Impuestos existen antes de acceder a Traslados
+          const impuestos = row?.facturaDto?.Impuestos;
+          if (!impuestos || !impuestos.Traslados) {
+            return ""; // Retorna una cadena vacía si Impuestos es null o Traslados no existe
+          }
+
+          const traslados = impuestos.Traslados;
+          // Validamos que traslados sea un array y tenga al menos un elemento con 'TasaOCuota'
+          if (
+            Array.isArray(traslados) &&
+            traslados.length > 0 &&
+            traslados[0]?.TasaOCuota !== undefined
+          ) {
+            return traslados[0].TasaOCuota;
+          }
+
+          return ""; // Retornar cadena vacía si no hay datos válidos
         } catch (error) {
-          // En caso de error, devuelve una cadena vacía
-          return "";
+          console.error("Error en accessorFn de TasaOCuota:", error);
+          return ""; // Manejo de errores para evitar fallos inesperados
         }
       },
       id: "TasaOCuota",
@@ -163,10 +175,9 @@ function TablaFacturaIngresos({
 
       Cell: ({ cell }) => {
         const value = cell.getValue();
-        return `${value}%`;
+        return value ? `${value}%` : "Sin datos";
       },
     },
-
     {
       accessorKey: "facturaDto.Impuestos.TotalImpuestosTrasladados",
       header: "Impuestos",
@@ -226,6 +237,11 @@ function TablaFacturaIngresos({
       header: "Versión",
       ...tableCellPropsCenter,
     },
+    {
+      accessorKey: "nombreArchivo",
+      header: "Archivo",
+      ...tableCellPropsCenter,
+    },
   ];
 
   const handleConsultar = async () => {
@@ -270,19 +286,23 @@ function TablaFacturaIngresos({
           },
         }}
         renderTopToolbarCustomActions={() => (
-          <Button
-            color="primary"
-            disabled={Object.keys(rowSelection).length === 0}
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setOpenModal(true);
-              setTempOrdenDeCompraNumber("");
-            }}
-            variant="contained"
-            sx={{ my: 2 }}
-          >
-            Agregar orden de compra
-          </Button>
+          <>
+            {location.pathname === "/ingresos" && (
+              <Button
+                color="primary"
+                disabled={Object.keys(rowSelection).length === 0}
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setOpenModal(true);
+                  setTempOrdenDeCompraNumber("");
+                }}
+                variant="contained"
+                sx={{ my: 2 }}
+              >
+                Agregar orden de compra
+              </Button>
+            )}
+          </>
         )}
       />
 
@@ -423,7 +443,7 @@ function TablaFacturaIngresos({
               Resumen
             </Typography>
             <Typography variant="body1">
-              Total de las facturas seleccionadas: {formatCurrency(total)}
+              Subtotal de las facturas seleccionadas: {formatCurrency(total)}
             </Typography>
             {montoOrdenCompra && (
               <Typography variant="body1">
@@ -437,8 +457,8 @@ function TablaFacturaIngresos({
                 color="error"
                 sx={{ mt: 1, fontWeight: "600" }}
               >
-                El total de las facturas excede el monto disponible de la orden
-                de compra
+                El subtotal de las facturas excede el monto disponible de la
+                orden de compra
               </Typography>
             )}
           </Box>
@@ -457,7 +477,7 @@ function TablaFacturaIngresos({
                 try {
                   const config = getConfig();
                   const response = await axios.post(
-                    "https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/ValidarFacturaOC",
+                    `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/ValidarFacturaOC`,
                     newData,
                     config
                   );

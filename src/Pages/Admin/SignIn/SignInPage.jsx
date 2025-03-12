@@ -114,7 +114,7 @@ export default function SignInPage() {
 
     if (
       value.length <= 55 &&
-      value.length >= 17 &&
+      value.length >= 14 &&
       !value.includes(" ") &&
       emailPattern.test(value) &&
       !hasSpecialChars

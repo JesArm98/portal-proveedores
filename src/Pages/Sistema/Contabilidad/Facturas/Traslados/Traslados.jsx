@@ -1,22 +1,47 @@
 import { useEffect, useState, useRef } from "react";
-import { useSnackbar } from "@/Context/SnackbarContext";
-import CustomTable from "@/Components/Custom/CustomTable";
+import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { mkConfig } from "export-to-csv";
-import IconButtonWithTooltip from "@/Components/Custom/IconButtonWithTooltip";
-import { tableCellPropsCenter } from "@/Components/Custom/CustomBoxStyles";
-import ExportCsvButton from "@/Components/Custom/ExportCsvButton";
-import { Box, Button, Paper, TextField, Typography } from "@mui/material";
-import { useAuth } from "@/Context/AuthContext";
+import ChecklistIcon from "@mui/icons-material/Checklist";
+import {
+  Backdrop,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  MenuItem,
+  Paper,
+  Select,
+  TextField,
+  Typography,
+} from "@mui/material";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import DragAndDropArea from "../Ingreso/DragAndDropArea";
+import AddIcon from "@mui/icons-material/Add";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import { InsertDriveFile } from "@mui/icons-material";
+import IconButtonWithTooltip from "@/Components/Custom/IconButtonWithTooltip";
+import ExportCsvButton from "@/Components/Custom/ExportCsvButton";
+import { useAuth } from "@/Context/AuthContext";
 import PreviewDialog from "@/Components/Custom/PreviewDialog";
 import CustomDialog from "@/Components/Custom/CustomDialog";
-import AddIcon from "@mui/icons-material/Add";
 import { fieldsTraslados } from "@/Constants/Fields/fields";
 import ColumnGenerator from "@/Components/Custom/ColumnGenerator";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { useNavigate } from "react-router-dom";
+import DragAndDropArea from "../Ingreso/DragAndDropArea";
+import TablaFacturaIngresos from "../Ingreso/TablaCrearFacturaIngreso";
+import { fieldsTrasladosRelacionados } from "@/Constants/Fields/fields";
+import { tableCellPropsCenter } from "@/Components/Custom/CustomBoxStyles";
+import { useSnackbar } from "@/Context/SnackbarContext";
+import CustomTable from "@/Components/Custom/CustomTable";
 
 const URL = import.meta.env.VITE_API_URL;
 
@@ -36,7 +61,8 @@ function Traslados() {
     errorData: null,
   });
 
-  const navigate = useNavigate();
+  const [aviso, setAviso] = useState(true);
+  const [avisoMantenimiento, setAvisoMantenimiento] = useState(true);
 
   // 🔹 Estado de UI (booleanos)
   const [uiState, setUiState] = useState({
@@ -48,11 +74,27 @@ function Traslados() {
     openDialog: false,
     openValidateDialog: false,
   });
-
+  const [VerificacionData, setVerificacionData] = useState(null);
+  const [isMobile] = useState(window.innerWidth <= 600);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
   const mensajeRef = useRef("");
-
+  const [validados, setValidados] = useState(false);
   const [mensajeValido, setMensajeValido] = useState(false);
-
+  const [contador, setContador] = useState(1);
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState(1);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(1);
+  const [sucursales, setSucursales] = useState([]);
+  const [empresas, setEmpresas] = useState([]); // Estado para almacenar empresas
+  const [validadaCount, setValidadaCount] = useState("");
+  const [invalidos, setInvalidos] = useState(false);
+  const [verificacionDataConOC, setVerificacionDataConOC] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [trasladosRelacionados, setTrasladosRelacionados] = useState("");
+  const [loadingTraslados, setLoadingTraslados] = useState(false);
+  const [openTrasladosRelacionados, setOpenTrasladosRelacionados] =
+    useState(false);
+  const [fetchSucursales, setFetchSucursales] = useState(false);
   // 🔹 Estado de archivos y UUID seleccionado
   const [fileState, setFileState] = useState({
     base64Files: [],
@@ -61,6 +103,9 @@ function Traslados() {
     data: [],
   });
 
+  console.log(invalidos);
+
+  const location = useLocation(); // Obtenemos el objeto location
   const { showSnackbar } = useSnackbar();
   const { getConfig } = useAuth();
 
@@ -75,21 +120,7 @@ function Traslados() {
 
       setFileState((prev) => ({ ...prev, data: respuesta.data }));
     } catch (error) {
-      if (error.response) {
-        // Si el error tiene respuesta del servidor, revisamos el código de estado
-        if (error.response.status === 401) {
-          showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
-          localStorage.clear(); // Limpiar el almacenamiento local
-          navigate("/sign-in"); // Redirigir al login
-        }
-      } else if (error.message === "Network Error") {
-        showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
-        localStorage.clear(); // Limpiar el almacenamiento local
-        navigate("/sign-in"); // Redirigir al login
-      } else {
-        console.error("Error al obtener los datos:", error);
-      }
-      showSnackbar(`${error.response.data}`, "error");
+      console.error("Error al obtener los datos:", error);
     } finally {
       setUiState((prev) => ({ ...prev, isLoading: false }));
     }
@@ -154,6 +185,34 @@ function Traslados() {
     }
   };
 
+  const handleOpenXMLTraslado = async (id) => {
+    setUiState((prev) => ({ ...prev, xmlDownload: true }));
+    try {
+      const config = getConfig();
+      const respuesta = await axios.get(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasTraslados/GetTrasladoXmlByUUID?uuid=${id}`,
+        { ...config, responseType: "text" }
+      );
+
+      if (respuesta.status === 200) {
+        const blob = new Blob([respuesta.data], { type: "application/xml" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `factura_${id}.xml`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        showSnackbar(`Descargado XML de la factura ${id}`, "success");
+      }
+    } catch (error) {
+      showSnackbar("Error descargando el XML", "error");
+    } finally {
+      setUiState((prev) => ({ ...prev, xmlDownload: false }));
+    }
+  };
+
   //Definición de colores de status
   const getBackgroundColor = (status) => {
     if (status === "Pagada") return "#2e7d32";
@@ -168,10 +227,33 @@ function Traslados() {
     return "#0288d1";
   };
 
+  const handleRelacionados = async (id) => {
+    setLoadingTraslados(true);
+    setOpenTrasladosRelacionados(true);
+    try {
+      const config = getConfig();
+      const respuesta = await axios.get(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasTraslados/GetTrasladosByIdFactura?idFacturaGasto=${id}`,
+        config
+      );
+
+      setTrasladosRelacionados(respuesta.data);
+    } catch (error) {
+      showSnackbar("Error al obtener los traslados relacionados", "error");
+    } finally {
+      setLoadingTraslados(false);
+    }
+  };
+
   //Generar las columnas de la tabla principal
   const columns = ColumnGenerator({
     fields: fieldsTraslados, // Las columnas configuradas con valueMap
     getBackgroundColor, // Función para los colores de estado
+  });
+
+  const columnsTraslados = ColumnGenerator({
+    fields: fieldsTrasladosRelacionados,
+    getBackgroundColor,
   });
 
   // 📌 Columnas generales sin "Error"
@@ -239,6 +321,11 @@ function Traslados() {
       header: "UUID",
       ...tableCellPropsCenter,
       Cell: ({ cell }) => cell.getValue() ?? "",
+    },
+    {
+      accessorKey: "claveSapProv",
+      header: "CVE SAP PROV",
+      ...tableCellPropsCenter,
     },
     {
       accessorKey: "facturaDto.Emisor.Rfc",
@@ -489,12 +576,18 @@ function Traslados() {
 
   const handleValidar = async () => {
     if (!fileState.selectedUuid) {
-      showSnackbar("⚠ Debes seleccionar un traslado antes de validar", "error");
+      showSnackbar(
+        "⚠ Debes seleccionar un traslado antes de validar",
+        "error"
+      );
       return;
     }
 
     if (fileState.base64Files.length === 0) {
-      showSnackbar("⚠ No hay archivos XML seleccionados para validar", "error");
+      showSnackbar(
+        "⚠ No hay archivos XML seleccionados para validar",
+        "error"
+      );
       return;
     }
 
@@ -567,6 +660,39 @@ function Traslados() {
       setUiState((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
+
+  const handleValidarFI = async () => {
+    const config = getConfig();
+    const data = {
+      idSucursal: sucursalSeleccionada,
+      archivosXMLB64: fileState.base64Files,
+    };
+
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasSap/ValidarFactura`,
+        data,
+        config
+      );
+
+      // Verificar el código de estado
+      if (response.status !== 200) {
+        throw new Error(`Error en la solicitud: ${response.statusText}`);
+      }
+
+      // En axios, la respuesta está en response.data
+      setVerificacionData(response.data);
+    } catch (error) {
+      console.error("Error al enviar los datos:", error);
+    } finally {
+      setValidados(true);
+      setLoading(false);
+    }
+  };
+
+  const getUserDocumentLink =
+    "https://firebasestorage.googleapis.com/v0/b/tvn-api-store.appspot.com/o/documentos%2FManuales%20intranet%2FManualFacturasTraslados.pdf?alt=media&token=18e82737-f312-4a00-bace-be9b3db82cab";
 
   const isMensajeObligatorio =
     (validationState.verifiedData?.length > 0 &&
@@ -747,14 +873,110 @@ function Traslados() {
     setMensajeValido(false);
   };
 
-  const getUserDocumentLink =
-    "https://firebasestorage.googleapis.com/v0/b/tvn-api-store.appspot.com/o/documentos%2FManuales%20intranet%2FManualFacturasTraslados.pdf?alt=media&token=18e82737-f312-4a00-bace-be9b3db82cab";
+  const handleOnCloseCrear = async () => {
+    setOpenDialog(false);
+    setVerificacionData(null);
+    setValidados(false);
+    setFileState((prev) => ({
+      ...prev,
+      base64Files: [],
+    }));
+    setInvalidos(false);
+  };
+
+  const handleCrear = async () => {
+    setLoading(true);
+    const config = getConfig();
+    const data = verificacionDataConOC ?? VerificacionData;
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasSap/CreateFactura`,
+        data,
+        config
+      );
+
+      // Verificar el código de estado
+      if (response.status !== 200) {
+        throw new Error(`Error en la solicitud: ${response.statusText}`);
+      }
+
+      // En axios, la respuesta está en response.data
+      showSnackbar(`${response.data}`, "success");
+    } catch (error) {
+      console.error("Error al enviar los datos:", error);
+    } finally {
+      setLoading(false);
+
+      handleOnCloseCrear();
+      setContador(contador + 1);
+      // 🔹 Asegurar que los datos se actualicen correctamente
+      setTimeout(() => {
+        obtenerDatos();
+      }, 1000);
+    }
+  };
+
+  const handleSucursalChange = (event) => {
+    const selectedValue = event.target.value;
+    setSucursalSeleccionada(selectedValue);
+  };
+
+  useEffect(() => {
+    const fetchEmpresas = async () => {
+      try {
+        const config = getConfig();
+        const response = await axios.get(
+          `https://${URL}/WS/TuvanosaEmpleados/Api/Empleados/GetEmpresas`,
+          config
+        );
+        setEmpresas(response.data); // Guardamos la lista de empresas
+      } catch (error) {
+        console.error("Error al obtener las empresas: ", error);
+      }
+    };
+
+    fetchEmpresas();
+  }, []);
+
+  useEffect(() => {
+    setFetchSucursales(true);
+    const fetchSucursales = async () => {
+      const idEmpresa = empresaSeleccionada
+        ? empresaSeleccionada
+        : localStorage.getItem("idEmpresa");
+
+      if (!idEmpresa) return;
+
+      try {
+        const config = getConfig();
+        const response = await axios.get(
+          `https://${URL}/WS/TuvanosaEmpleados/Api/Empleados/GetSucursales?id_empresa=${idEmpresa}`,
+          config
+        );
+
+        setSucursales(response.data);
+      } catch (error) {
+        console.error("Error al obtener las sucursales: ", error);
+      } finally {
+        setFetchSucursales(false);
+      }
+    };
+
+    fetchSucursales();
+  }, [empresaSeleccionada]);
+
+  const handleCerrarTraslados = () => {
+    setOpenTrasladosRelacionados(false);
+    setTrasladosRelacionados("");
+  };
 
   return (
     <Box>
       <CustomTable
         columns={columns}
         data={fileState.data}
+        globalFilterFn="fuzzy" // Cambia el tipo de filtrado global
         state={{ isLoading: uiState.isLoading }}
         muiTableContainerProps={{
           sx: {
@@ -764,6 +986,7 @@ function Traslados() {
         initialState={{
           pagination: { pageIndex: 0, pageSize: 20 },
           density: "compact",
+          showColumnFilters: true,
         }}
         muiTablePaperProps={{
           elevation: 0,
@@ -814,6 +1037,16 @@ function Traslados() {
                     }}
                   />
                 )}
+                {row.original.trasladosCargados === true && (
+                  <IconButtonWithTooltip
+                    tooltipTitle="Ver traslados cargados"
+                    iconColor="#0288d1"
+                    IconComponent={<ChecklistIcon />}
+                    onIconClick={() => {
+                      handleRelacionados(row.original.id);
+                    }}
+                  />
+                )}
               </>
             </Box>
           );
@@ -830,10 +1063,26 @@ function Traslados() {
               style={{ width: "fit-content", color: "#262E66" }}
               startIcon={<InfoOutlinedIcon />}
               onClick={() => {
-                window.open(getUserDocumentLink, "_blank");
+                const documentLink = getUserDocumentLink();
+                if (documentLink) {
+                  window.open(documentLink, "_blank");
+                } else {
+                  showSnackbar(
+                    `No tiene permisos para acceder a este documento`,
+                    "error"
+                  );
+                }
               }}
             >
               {"AYUDA"}
+            </Button>
+
+            <Button
+              color="primary"
+              onClick={() => setOpenDialog(true)}
+              startIcon={<AddIcon />}
+            >
+              {isMobile ? "" : "Agregar"}
             </Button>
 
             {/* Usar el componente de exportación */}
@@ -847,14 +1096,14 @@ function Traslados() {
       />
 
       {/* PDF DIALOG */}
-      {fileState.PDF ? (
+      {fileState.PDF && (
         <PreviewDialog
           previewData={fileState.PDF}
           transitionTimeout={400}
           open={uiState.openPDF}
           onClose={() => setUiState((prev) => ({ ...prev, openPDF: false }))}
         />
-      ) : null}
+      )}
 
       <CustomDialog
         open={uiState.openDialog}
@@ -935,6 +1184,7 @@ function Traslados() {
               initialState={{
                 pagination: { pageIndex: 0, pageSize: 5 },
                 density: "compact",
+                showColumnFilters: true,
               }}
               columns={columnsErrores}
               muiTablePaperProps={{
@@ -964,6 +1214,7 @@ function Traslados() {
               initialState={{
                 pagination: { pageIndex: 0, pageSize: 5 },
                 density: "compact",
+                showColumnFilters: true,
               }}
               muiTablePaperProps={{
                 elevation: 0,
@@ -993,6 +1244,7 @@ function Traslados() {
               initialState={{
                 pagination: { pageIndex: 0, pageSize: 5 },
                 density: "compact",
+                showColumnFilters: true,
               }}
               muiTablePaperProps={{
                 elevation: 0,
@@ -1025,6 +1277,7 @@ function Traslados() {
                     initialState={{
                       pagination: { pageIndex: 0, pageSize: 5 },
                       density: "compact",
+                      showColumnFilters: true,
                     }}
                     muiTablePaperProps={{
                       elevation: 0,
@@ -1175,6 +1428,267 @@ function Traslados() {
               </Box>
             )}
         </Box>
+      </CustomDialog>
+
+      {/*Crear Factura*/}
+      <Dialog
+        open={openDialog}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            borderRadius: 16,
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            bgcolor: "primary.main",
+            color: "common.white",
+            py: 2,
+            fontWeight: "bold",
+            textAlign: "center",
+          }}
+        >
+          Crear Factura
+        </DialogTitle>
+
+        <HighlightOffIcon
+          sx={{
+            position: "absolute",
+            zIndex: 13,
+            color: "white",
+            right: 18,
+            top: 18,
+            cursor: "pointer",
+            transition: "transform 0.2s ease-in-out",
+            "&:hover": {
+              transform: "scale(1.2)",
+            },
+          }}
+          variant="contained"
+          onClick={handleOnCloseCrear}
+        />
+
+        <DialogContent sx={{ mt: 2, px: 4 }}>
+          {!VerificacionData && fileState.base64Files.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+                {fileState.base64Files.length} XML seleccionado
+                {fileState.base64Files.length !== 1 ? "s" : ""}
+              </Typography>
+              <List
+                sx={{
+                  bgcolor: "grey.100",
+                  borderRadius: 2,
+                  p: 2,
+                  maxHeight: "240px",
+                  overflowY:
+                    fileState.base64Files.length > 5 ? "auto" : "visible",
+                }}
+              >
+                {fileState.base64Files.map((archivo, index) => (
+                  <ListItem key={index} sx={{ py: 1 }}>
+                    <ListItemIcon>
+                      <InsertDriveFile color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={archivo.nombreArchivo}
+                      primaryTypographyProps={{ fontWeight: "medium" }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
+
+          {!VerificacionData && (
+            <FormControl fullWidth variant="outlined" margin="normal">
+              <InputLabel id="empresa-select-label">Empresa</InputLabel>
+              <Select
+                labelId="empresa-select-label"
+                label="Empresa"
+                value={empresaSeleccionada || ""}
+                onChange={(event) => setEmpresaSeleccionada(event.target.value)}
+              >
+                {empresas.map((empresa) => (
+                  <MenuItem key={empresa.id} value={empresa.id}>
+                    {empresa.claveSap} -{empresa.descripcion}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {!VerificacionData && (
+            <FormControl fullWidth variant="outlined" margin="normal">
+              <InputLabel id="sucursal-select-label">Sucursal</InputLabel>
+              <Select
+                labelId="sucursal-select-label"
+                label="Sucursal"
+                value={sucursalSeleccionada || ""}
+                onChange={handleSucursalChange}
+                disable={fetchSucursales}
+                endAdornment={
+                  fetchSucursales && (
+                    <CircularProgress
+                      size={24}
+                      sx={{
+                        position: "absolute",
+                        right: 30,
+                        top: "50%",
+                        marginTop: "-12px",
+                        color: "primary.main",
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )
+                }
+              >
+                {sucursales.map((sucursal) => (
+                  <MenuItem key={sucursal.id} value={sucursal.id}>
+                    {sucursal.claveSAP} - {sucursal.descripcion}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {!VerificacionData && (
+            <DragAndDropArea
+              onFileSelect={(files) => handleFileUpload({ target: { files } })}
+              loading={loading}
+            />
+          )}
+
+          {loading && (
+            <Backdrop open={loading} sx={{ zIndex: 9999, color: "#fff" }}>
+              <CircularProgress color="inherit" />
+            </Backdrop>
+          )}
+        </DialogContent>
+        {VerificacionData && (
+          <Box sx={{ width: "96%", margin: "0 auto", mb: 3 }}>
+            <TablaFacturaIngresos
+              agencias={VerificacionData}
+              setInvalidos={setInvalidos}
+              setValidadaCount={setValidadaCount}
+              total={total}
+              setTotal={setTotal}
+              setVerificacionDataConOC={setVerificacionDataConOC}
+              location={location}
+            />
+          </Box>
+        )}
+
+        <DialogActions>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={
+              loading ||
+              fileState.base64Files.length === 0 ||
+              (validados && validadaCount <= 0)
+            }
+            onClick={validados ? handleCrear : handleValidarFI}
+            sx={{
+              fontWeight: "bold",
+              px: 2,
+
+              borderRadius: 2,
+              "&:disabled": {
+                bgcolor: "action.disabledBackground",
+                color: "action.disabled",
+              },
+            }}
+          >
+            {validados ? "Subir validos" : "Validar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <CustomDialog
+        title="Traslados relacionados a la factura"
+        transitionTimeout={400}
+        open={openTrasladosRelacionados}
+        onPdfPreview={true}
+        paddingContent={0}
+        onClose={handleCerrarTraslados}
+        width="md"
+        fullWidth
+      >
+        <CustomTable
+          initialState={{
+            pagination: { pageIndex: 0, pageSize: 5 },
+            density: "compact",
+          }}
+          columns={columnsTraslados}
+          muiTablePaperProps={{
+            elevation: 0,
+          }}
+          state={{ loading: loadingTraslados }}
+          data={trasladosRelacionados}
+          enableRowActions
+          renderRowActions={({ row }) => {
+            return (
+              <Box
+                sx={{
+                  width: "auto",
+                  position: "relative",
+                }}
+              >
+                <>
+                  <IconButtonWithTooltip
+                    sx
+                    tooltipTitle="Descargar XML"
+                    iconColor="#0288d1"
+                    disabled={uiState.xmlDownload === true}
+                    IconComponent={
+                      <img
+                        src="/images/XML icon.png"
+                        alt="Icono de PDF"
+                        style={{ width: "34px", height: "20px" }}
+                      />
+                    }
+                    onIconClick={() => handleOpenXMLTraslado(row.original.uuid)}
+                  />
+                </>
+              </Box>
+            );
+          }}
+        />
+      </CustomDialog>
+
+      <CustomDialog
+        title={"AVISO"}
+        transitionTimeout={400}
+        open={aviso}
+        onPdfPreview={true}
+        paddingContent={0}
+        onClose={() => setAviso(false)}
+        width="md"
+        fullWidth
+      >
+        <ul>
+          <li>
+            Se ha integrado el botón "Agregar" el cual nos permite subir
+            Facturas de tipo Ingreso que tienen servicios de traslados y/o
+            fletes
+          </li>{" "}
+          <li>
+            Se ha agregado una nueva columna en la tabla que es CVE SAP PROV,
+            que como su nombre lo dice es la CLAVE SAP del PROVEEDOR
+          </li>
+          <li>
+            Se ha agregado una nueva columna en la tabla que es TRASLADOS y
+            muestra que facturas tienen traslados cargados y cuales no.
+          </li>
+          <li>
+            Se ha agregado un nuevo botón para poder visualizar los traslados
+            que tienen cargadas las facturas.
+          </li>
+        </ul>
       </CustomDialog>
     </Box>
   );
