@@ -33,6 +33,7 @@ function TablaFacturaIngresos({
   setTotal,
   setVerificacionDataConOC,
   location,
+  uuid,
 }) {
   const { getConfig } = useAuth();
   const [data, setData] = useState(agencias);
@@ -45,6 +46,8 @@ function TablaFacturaIngresos({
   const [rowSelection, setRowSelection] = useState({});
 
   const URL = import.meta.env.VITE_API_URL;
+
+  console.log(agencias?.[0]?.facturaDto?.CfdiRelacionados?.[0]?.TipoRelacion);
 
   useEffect(() => {
     if (Array.isArray(data)) {
@@ -98,7 +101,7 @@ function TablaFacturaIngresos({
         const status = cell.getValue();
         return (
           <Chip
-            label={status === true ? "CARGADO" : "NO CARGADO"}
+            label={status === true ? "YA FUE CARGADO" : "NO HA SIDO CARGADO"}
             color={status === true ? "error" : "success"}
             size="small"
           />
@@ -248,7 +251,7 @@ function TablaFacturaIngresos({
     try {
       const config = getConfig();
       const response = await axios.get(
-        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetOrdenCompraCargos?ordenCompra=${tempOrdenDeCompraNumber}`,
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetOrdenCompraCargos?ordenCompra=${tempOrdenDeCompraNumber}&uuid=${uuid}`,
         { ...config, responseType: "text" }
       );
       const parsedData = JSON.parse(response.data);
@@ -279,7 +282,7 @@ function TablaFacturaIngresos({
         getRowId={(row) => row.uuid || row.id}
         state={{ rowSelection }}
         onRowSelectionChange={setRowSelection}
-        enableRowSelection
+        enableRowSelection={(row) => row.original.existeFactura === false}
         muiTableContainerProps={{
           sx: {
             maxHeight: "60vh",
@@ -448,19 +451,24 @@ function TablaFacturaIngresos({
             {montoOrdenCompra && (
               <Typography variant="body1">
                 Disponible orden de compra:{" "}
-                {formatCurrency(montoOrdenCompra.montoDisponible)}
+                {agencias?.[0]?.facturaDto?.CfdiRelacionados?.[0]
+                  ?.TipoRelacion === "07"
+                  ? formatCurrency(montoOrdenCompra.monto)
+                  : formatCurrency(montoOrdenCompra.montoDisponible)}
               </Typography>
             )}
-            {montoOrdenCompra.montoDisponible < total && (
-              <Typography
-                variant="body2"
-                color="error"
-                sx={{ mt: 1, fontWeight: "600" }}
-              >
-                El subtotal de las facturas excede el monto disponible de la
-                orden de compra
-              </Typography>
-            )}
+            {agencias?.[0]?.facturaDto?.CfdiRelacionados?.[0]?.TipoRelacion !==
+              "07" &&
+              montoOrdenCompra.montoDisponible < total && (
+                <Typography
+                  variant="body2"
+                  color="error"
+                  sx={{ mt: 1, fontWeight: "600" }}
+                >
+                  El subtotal de las facturas excede el monto disponible de la
+                  orden de compra
+                </Typography>
+              )}
           </Box>
         </DialogContent>
 
@@ -468,8 +476,11 @@ function TablaFacturaIngresos({
           <Button
             variant="contained"
             disabled={
-              !montoOrdenCompra.montoDisponible ||
-              montoOrdenCompra.montoDisponible < total
+              agencias?.[0]?.facturaDto?.CfdiRelacionados?.[0]?.TipoRelacion ===
+              "07"
+                ? !montoOrdenCompra.monto || montoOrdenCompra.monto < total
+                : !montoOrdenCompra.montoDisponible ||
+                  montoOrdenCompra.montoDisponible < total
             }
             color="primary"
             onClick={() => {

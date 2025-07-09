@@ -1672,10 +1672,10 @@ function Traslados() {
       >
         <ul>
           <li>
-            Se ha integrado el botón "Agregar" el cual nos permite subir
-            Facturas de tipo Ingreso que tienen servicios de traslados y/o
-            fletes
-          </li>{" "}
+            Se agrego el estatus de <strong>"Revision de Traslados"</strong>{" "}
+            para dar a conocer si un traslado se encuentra en revisión por el
+            departamento de Contabilidad.
+          </li>
           <li>
             Se ha agregado una nueva columna en la tabla que es CVE SAP PROV,
             que como su nombre lo dice es la CLAVE SAP del PROVEEDOR

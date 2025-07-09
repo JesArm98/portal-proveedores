@@ -20,7 +20,7 @@ import { useAuth } from "@/Context/AuthContext";
 
 const URL = import.meta.env.VITE_API_URL;
 
-const DialogoCambiarOC = ({
+export const DialogoCambiarOC = ({
   open,
   setOpenCambiarOC,
   uuid,
@@ -28,14 +28,18 @@ const DialogoCambiarOC = ({
   contador,
   tituloModalCE,
   subTotal,
+  VerificacionData,
 }) => {
   const [ordenCompra, setOrdenCompra] = useState("");
   const [openCollapseDe, setOpenCollapseDe] = useState(false);
   const [montoOrdenCompra, setMontoOrdenCompra] = useState("");
   const [disabledButtonOC, setDisabledButtonOC] = useState(false);
   const { showSnackbar } = useSnackbar();
-
   const { getConfig } = useAuth();
+
+  console.log(
+    VerificacionData?.[0]?.facturaDto?.CfdiRelacionados?.[0]?.TipoRelacion
+  );
 
   const formatCurrency = useMemo(
     () => (value) =>
@@ -97,8 +101,7 @@ const DialogoCambiarOC = ({
         showSnackbar("Orden de compra actualizada con éxito", "success");
         setContador(contador + 1);
         setOpenCambiarOC(false);
-      } else {
-        setOpenCambiarOC(false);
+        resetStates();
       }
     } catch (error) {
       // Mostrar el errorGuardado que ya se asignó en el bloque try
@@ -111,7 +114,7 @@ const DialogoCambiarOC = ({
       const config = getConfig();
 
       const getResponse = await axios.get(
-        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetOrdenCompraCargos?ordenCompra=${ordenCompra}`,
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetOrdenCompraCargos?ordenCompra=${ordenCompra}&uuid=${uuid}`,
         config
       );
 
@@ -125,6 +128,19 @@ const DialogoCambiarOC = ({
       showSnackbar("Orden de compra no existe", "error");
     }
   };
+
+  const resetStates = () => {
+    setOrdenCompra("");
+    setMontoOrdenCompra("");
+    setDisabledButtonOC(false);
+    setOpenCollapseDe(false);
+  };
+
+  const disponibleFactura =
+    VerificacionData?.[0]?.facturaDto?.CfdiRelacionados?.[0]?.TipoRelacion ===
+    "07"
+      ? montoOrdenCompra?.monto
+      : montoOrdenCompra?.montoDisponible;
 
   return (
     <Dialog
@@ -164,9 +180,7 @@ const DialogoCambiarOC = ({
           },
         }}
         onClick={() => {
-          setOpenCambiarOC(false),
-            setMontoOrdenCompra(""),
-            setDisabledButtonOC(false);
+          setOpenCambiarOC(false), resetStates();
         }}
         variant="contained"
       />
@@ -322,6 +336,14 @@ const DialogoCambiarOC = ({
             Subtotal de la factura de ingreso: ${subTotal}
           </Typography>
         </Box>
+
+        {montoOrdenCompra.montoDisponible && (
+          <Box sx={{ mt: 2 }}>
+            <Typography>
+              Disponible de la factura de ingreso: ${disponibleFactura}
+            </Typography>
+          </Box>
+        )}
       </DialogContent>
 
       <DialogActions>
@@ -343,5 +365,3 @@ const DialogoCambiarOC = ({
     </Dialog>
   );
 };
-
-export default DialogoCambiarOC;

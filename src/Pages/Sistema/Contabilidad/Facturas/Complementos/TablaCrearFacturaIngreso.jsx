@@ -97,7 +97,7 @@ function TablaFacturaIngresos({
         const status = cell.getValue();
         return (
           <Chip
-            label={status === true ? "CARGADO" : "NO CARGADO"}
+            label={status === true ? "YA FUE CARGADO" : "NO HA SIDO CARGADO"}
             color={status === true ? "error" : "success"}
             size="small"
           />

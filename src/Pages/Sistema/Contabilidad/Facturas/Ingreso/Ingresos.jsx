@@ -14,6 +14,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import CloseIcon from "@mui/icons-material/Close";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import {
   Box,
   Button,
@@ -38,7 +39,7 @@ import { InsertDriveFile } from "@mui/icons-material";
 import CustomDialog from "@/Components/Custom/CustomDialog";
 import DragAndDropArea from "./DragAndDropArea";
 import { useLocation, useNavigate } from "react-router-dom";
-import DialogoCambiarOC from "./DialogoCambiarOC";
+import { DialogoCambiarOC } from "./DialogoCambiarOC";
 import DialogoEliminarOC from "./DialogoEliminarOC";
 
 const csvConfig = mkConfig({
@@ -49,7 +50,7 @@ const csvConfig = mkConfig({
 });
 
 function Ingresos() {
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState(null);
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState(1);
   const [total, setTotal] = useState(0);
   const [sucursales, setSucursales] = useState([]);
   const [sucursalesJefes, setSucursalesJefes] = useState("");
@@ -60,6 +61,12 @@ function Ingresos() {
   const [verificacionDataConOC, setVerificacionDataConOC] = useState(null);
   const { showSnackbar } = useSnackbar();
   const [isMobile] = useState(window.innerWidth <= 600);
+
+  const [sucursalEdit, setSucursalEdit] = useState(null);
+  const [openChangeSucursal, setOpenChangeSucursal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fetchSucursales, setFetchSucursales] = useState(false);
+
   const [agencias, setAgencias] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tituloModalCE, setTituloModalCE] = useState("");
@@ -74,7 +81,7 @@ function Ingresos() {
   const [openEliminarOC, setOpenEliminarOC] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [openRowId, setOpenRowId] = useState(null); // Estado global de apertura
-  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(0);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(1);
   const [empresas, setEmpresas] = useState([]); // Estado para almacenar empresas
   const navigate = useNavigate();
   const { getConfig } = useAuth();
@@ -119,40 +126,64 @@ function Ingresos() {
     obtenerDatosDeJefes();
   }, []);
 
-  useEffect(() => {
-    const obtenerDatos = async () => {
-      try {
-        const config = getConfig();
+  const obtenerDatos = async () => {
+    try {
+      const config = getConfig();
 
-        const respuesta = await axios.get(
-          `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetFacturas?rol=5`,
-          config
-        );
+      const respuesta = await axios.get(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetFacturas?rol=5`,
+        config
+      );
 
-        setAgencias(respuesta.data);
-      } catch (error) {
-        if (error.response) {
-          // Si el error tiene respuesta del servidor, revisamos el código de estado
-          if (error.response.status === 401) {
-            showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
-            localStorage.clear(); // Limpiar el almacenamiento local
-            navigate("/sign-in"); // Redirigir al login
-          }
-        } else if (error.message === "Network Error") {
+      setAgencias(respuesta.data);
+    } catch (error) {
+      if (error.response) {
+        // Si el error tiene respuesta del servidor, revisamos el código de estado
+        if (error.response.status === 401) {
           showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
           localStorage.clear(); // Limpiar el almacenamiento local
           navigate("/sign-in"); // Redirigir al login
-        } else {
-          console.error("Error al obtener los datos:", error);
         }
-        showSnackbar(`${error.response.data}`, "error");
+      } else if (error.message === "Network Error") {
+        showSnackbar("Sesión expirada. Redirigiendo al login...", "error");
+        localStorage.clear(); // Limpiar el almacenamiento local
+        navigate("/sign-in"); // Redirigir al login
+      } else {
+        console.error("Error al obtener los datos:", error);
+      }
+      showSnackbar(`${error.response.data}`, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    obtenerDatos();
+  }, [contador]);
+
+  useEffect(() => {
+    setFetchSucursales(true);
+    const fetchSucursales = async () => {
+      const idEmpresa = empresaSeleccionada;
+
+      if (!idEmpresa) return;
+
+      try {
+        const config = getConfig();
+        const response = await axios.get(
+          `https://${URL}/WS/TuvanosaEmpleados/Api/Empleados/GetSucursales?id_empresa=${idEmpresa}`,
+          config
+        );
+
+        setSucursales(response.data);
+      } catch (error) {
+        console.error("Error al obtener las sucursales: ", error);
       } finally {
-        setIsLoading(false);
+        setFetchSucursales(false);
       }
     };
 
-    obtenerDatos();
-  }, [contador]);
+    fetchSucursales();
+  }, [empresaSeleccionada]);
 
   const handleOnCloseCrear = async () => {
     setOpenDialog(false);
@@ -510,11 +541,6 @@ function Ingresos() {
       file.name.toLowerCase().endsWith(".xml")
     );
 
-    if (xmlFiles.length !== files.length) {
-      alert("Por favor, seleccione solo archivos XML.");
-      return;
-    }
-
     setLoading(true);
     try {
       const fileObjectsPromises = xmlFiles.map(async (file) => {
@@ -655,6 +681,44 @@ function Ingresos() {
     setSucursalSeleccionada(selectedValue);
   };
 
+  const handleEditSucursal = async () => {
+    setIsSubmitting(true);
+    const config = getConfig();
+    const data = {
+      idSucursal: sucursalSeleccionada,
+      idFactura: sucursalEdit.id,
+    };
+
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/EditarFacturaSucursal`,
+        data,
+        config
+      );
+
+      // En axios, la respuesta está en response.data
+      setOpenChangeSucursal(false);
+      console.log(response);
+      showSnackbar("Sucursal editada con exito", "success");
+      obtenerDatos();
+      // Restauramos empresaSeleccionada a su valor original
+      setEmpresaSeleccionada(1);
+
+      setSucursalSeleccionada(1);
+    } catch (error) {
+      console.error("Error al enviar los datos:", error);
+      showSnackbar(`${error.response.data}`, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEditSucursal = async (sucursalToEdit) => {
+    setSucursalEdit(sucursalToEdit); // Guardamos los datos en el estado
+    setOpenChangeSucursal(true);
+  };
+
   const getUserDocumentLink =
     "https://firebasestorage.googleapis.com/v0/b/tvn-api-store.appspot.com/o/documentos%2FManuales%20intranet%2FManualFacturasIngresos.pdf?alt=media&token=79f64584-e627-4eb6-9e46-989ce75d6fcd";
 
@@ -741,6 +805,15 @@ function Ingresos() {
                 />
               ),
               onClick: () => handleOpenXML(row.original.uuid),
+            },
+            {
+              tooltipTitle: "Editar sucursal",
+              icon: (
+                <StorefrontIcon
+                  style={{ color: "#ff9100", width: 25, height: 25 }}
+                />
+              ),
+              onClick: () => handleOpenEditSucursal(row.original),
             },
           ];
 
@@ -975,6 +1048,65 @@ function Ingresos() {
       >
         <ConceptosIngresos conceptos={conceptos} />
       </CustomDialog>
+
+      <CustomDialog
+        title="Cambiar Sucursal"
+        open={openChangeSucursal}
+        onClose={() => setOpenChangeSucursal(false)}
+        width="md"
+        fullWidth
+        onSubmit={handleEditSucursal}
+        isSubmitting={isSubmitting}
+        submitDisabled={isSubmitting}
+      >
+        <FormControl fullWidth variant="outlined" margin="normal">
+          <InputLabel id="empresa-select-label">Empresa</InputLabel>
+          <Select
+            labelId="empresa-select-label"
+            label="Empresa"
+            value={sucursalEdit?.idEmpresa}
+            onChange={(event) => setEmpresaSeleccionada(event.target.value)}
+          >
+            {empresas.map((empresa) => (
+              <MenuItem key={empresa.id} value={empresa.id}>
+                {empresa.claveSap} -{empresa.descripcion}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl fullWidth variant="outlined" margin="normal">
+          <InputLabel id="sucursal-select-label">Sucursal</InputLabel>
+          <Select
+            labelId="sucursal-select-label"
+            label="Sucursal"
+            value={sucursalSeleccionada || sucursalEdit?.idSucursal}
+            onChange={handleSucursalChange}
+            disabled={fetchSucursales}
+            endAdornment={
+              fetchSucursales && (
+                <CircularProgress
+                  size={24}
+                  sx={{
+                    position: "absolute",
+                    right: 30,
+                    top: "50%",
+                    marginTop: "-12px",
+                    color: "primary.main",
+                    pointerEvents: "none",
+                  }}
+                />
+              )
+            }
+          >
+            {sucursales.map((sucursal) => (
+              <MenuItem key={sucursal.id} value={sucursal.id}>
+                {sucursal.claveSAP} - {sucursal.descripcion}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </CustomDialog>
+
       <DialogoCambiarOC
         open={openCambiarOC}
         setOpenCambiarOC={setOpenCambiarOC}

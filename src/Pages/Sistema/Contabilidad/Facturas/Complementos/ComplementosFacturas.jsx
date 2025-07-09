@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSnackbar } from "@/Context/SnackbarContext";
 import CustomTable from "@/Components/Custom/CustomTable";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import SourceIcon from "@mui/icons-material/Source";
@@ -64,6 +64,8 @@ function ComplementosFacturas() {
   const [openDialog, setOpenDialog] = useState(false);
   const navigate = useNavigate();
   const { getConfig } = useAuth();
+
+  const location = useLocation(); // Obtenemos el objeto location
 
   console.log(invalidos);
 
@@ -224,8 +226,8 @@ function ComplementosFacturas() {
             {status === true
               ? "VIGENTE"
               : status === false
-              ? "CANCELADA"
-              : "ERROR"}
+                ? "CANCELADA"
+                : "ERROR"}
           </Box>
         );
       },
@@ -362,14 +364,11 @@ function ComplementosFacturas() {
 
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
-    const xmlFiles = files.filter((file) =>
-      file.name.endsWith(".xml" || ".XML")
-    );
 
-    if (xmlFiles.length !== files.length) {
-      alert("Por favor, seleccione solo archivos XML.");
-      return;
-    }
+    // Aseguramos que la validación sea insensible a mayúsculas
+    const xmlFiles = files.filter((file) =>
+      file.name.toLowerCase().endsWith(".xml")
+    );
 
     setLoading(true);
     try {
@@ -647,6 +646,7 @@ function ComplementosFacturas() {
               total={total}
               setTotal={setTotal}
               setVerificacionDataConOC={setVerificacionDataConOC}
+              location={location}
             />
           </Box>
         )}
