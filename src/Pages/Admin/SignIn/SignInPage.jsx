@@ -548,10 +548,33 @@ export default function SignInPage() {
                         }}
                       >
                         {" "}
-                        Tienes algun problema? Comunícate con:{"  "}
-                        <strong>innovacion@tuvanosa.com</strong>{" "}
+                        Canales de contacto:{" "}
+                      </Typography>
+                    </Grid>{" "}
+                    <Grid item xs>
+                      <Typography
+                        sx={{
+                          textAlign: "center",
+                          marginTop: "18px",
+                        }}
+                      >
+                        {" "}
+                        ¿Quieres ser proveedor?{"  "}
+                        <strong>compras@tuvanosa.com</strong>{" "}
                       </Typography>
                     </Grid>
+                    <Grid item xs>
+                      <Typography
+                        sx={{
+                          textAlign: "center",
+                          marginTop: "18px",
+                        }}
+                      >
+                        {" "}
+                        ¿Tienes algun problema?{"  "}
+                        <strong>innovacion@tuvanosa.com</strong>{" "}
+                      </Typography>
+                    </Grid>{" "}
                     <Backdrop
                       sx={{
                         color: "#fff",
