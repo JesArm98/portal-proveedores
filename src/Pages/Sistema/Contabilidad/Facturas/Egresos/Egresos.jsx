@@ -98,13 +98,13 @@ function Egresos() {
       const config = getConfig();
 
       const respuesta = await axios.get(
-        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasEgresos/GetFacturas?rol=5`,
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasEgresos/GetFacturas?periodo=0&mes=0&idEmpresa=0&idProveedor=0`,
         config
       );
 
       setAgencias(respuesta.data);
     } catch (error) {
-      console.error("Error al obtener los datos:", error);
+      showSnackbar(error.response.data, "error");
     } finally {
       setUiState((prev) => ({ ...prev, isLoading: false }));
     }

@@ -114,13 +114,13 @@ function Traslados() {
       const config = getConfig();
 
       const respuesta = await axios.get(
-        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasTraslados/GetFacturas?rol=5`,
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasTraslados/GetFacturas?periodo=0&mes=0&idEmpresa=0&idProveedor=0&idProveedor=0`,
         config
       );
 
       setFileState((prev) => ({ ...prev, data: respuesta.data }));
     } catch (error) {
-      console.error("Error al obtener los datos:", error);
+      showSnackbar(error.response.data, "error");
     } finally {
       setUiState((prev) => ({ ...prev, isLoading: false }));
     }

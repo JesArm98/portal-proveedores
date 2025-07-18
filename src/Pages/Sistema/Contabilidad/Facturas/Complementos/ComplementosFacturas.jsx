@@ -74,7 +74,7 @@ function ComplementosFacturas() {
       try {
         const config = getConfig();
         const respuesta = await axios.get(
-          `https://${URL}/WS/TuvanosaProveedores/Api/ComplementoPago/GetComplementosPagos?rol=5`,
+          `https://${URL}/WS/TuvanosaProveedores/Api/ComplementoPago/GetComplementosPagos?periodo=0&mes=0&idEmpresa=0&idProveedor=0`,
           config
         );
         setAgencias(respuesta.data);

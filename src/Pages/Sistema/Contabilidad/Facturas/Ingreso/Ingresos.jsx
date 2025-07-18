@@ -131,7 +131,7 @@ function Ingresos() {
       const config = getConfig();
 
       const respuesta = await axios.get(
-        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetFacturas?rol=5`,
+        `https://${URL}/WS/TuvanosaProveedores/Api/FacturasIngresos/GetFacturas?periodo=0&mes=0&idEmpresa=0&idProveedor=0`,
         config
       );
 
