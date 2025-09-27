@@ -1133,11 +1133,12 @@ function Ingresos() {
       >
         <ul>
           <li>
-            Se ha solucionado el error de de calculo de la Orden de Compra
+            Todas las Facturas de Ingresos, al momento de cargarlas, se requiere
+            su <strong>Orden de Compra</strong> para que el sistema permita su
+            carga .
           </li>
           <li>
-            Se ha agregado una nueva columna en la tabla que es CVE SAP PROV,
-            que como su nombre lo dice es la CLAVE SAP del PROVEEDOR
+            Se ha solucionado el error de de calculo de la Orden de Compra
           </li>
         </ul>
       </CustomDialog>
