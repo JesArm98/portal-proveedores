@@ -119,37 +119,6 @@ const ProviderPortalMessage = () => {
             </ListItem>
           </List>
 
-          <Box
-            sx={{
-              marginTop: "1.5rem",
-              textAlign: "center",
-              backgroundColor: "#f0f4f8",
-              padding: "1rem",
-              borderRadius: "8px",
-              width: "fit-content",
-              margin: "auto",
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#555",
-              }}
-            >
-              <EmailIcon sx={{ marginRight: "0.5rem" }} />
-              Soporte:{" "}
-              <a
-                href="mailto:innovacion@tuvanosa.com"
-                style={{ textDecoration: "none" }}
-              >
-                innovacion@tuvanosa.com
-              </a>
-            </Typography>
-          </Box>
-
           <Typography
             variant="caption"
             sx={{
